@@ -1,0 +1,62 @@
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    hostname: maxbook-claude-proxy
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "false"
+      TS_ACCEPT_DNS: "true"
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    healthcheck:
+      test: ["CMD", "tailscale", "status", "--peers=false"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.code-server.rule=Host(`maxbook-claude.43v.de`)"
+      - "traefik.http.routers.code-server.entrypoints=websecure"
+      - "traefik.http.routers.code-server.tls=true"
+      - "traefik.http.routers.code-server.tls.certresolver=letsencrypt"
+      - "traefik.http.services.code-server.loadbalancer.server.port=8080"
+      - "traefik.http.services.code-server.loadbalancer.healthcheck.path=/healthz"
+      - "traefik.http.services.code-server.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.code-server.loadbalancer.healthcheck.timeout=3s"
+    networks:
+      - traefik_webgateway
+    restart: unless-stopped
+
+  ssh-tunnel-proxy:
+    build: .
+    network_mode: service:tailscale
+    depends_on:
+      tailscale:
+        condition: service_healthy
+    environment:
+      SSH_HOST: max-macbook.ainu-major.ts.net
+      SSH_USER: max
+      SSH_KEY_PATH: /etc/ssh-key_id_ed25519
+      KNOWN_HOSTS_PATH: /etc/ssh-known-hosts/known_hosts
+      PORT: "8080"
+      REMOTE_PORT: "8080"
+      REMOTE_COMMAND: "code-server --auth none --disable-telemetry --host 127.0.0.1 --port 8080"
+      INACTIVITY_TIMEOUT: "30m"
+    volumes:
+      - ./id_ed25519:/etc/ssh-key_id_ed25519:ro
+      - known-hosts:/etc/ssh-known-hosts
+    restart: unless-stopped
+
+networks:
+  traefik_webgateway:
+    external: true
+
+volumes:
+  tailscale-state:
+  known-hosts:
