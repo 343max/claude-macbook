@@ -36,7 +36,7 @@ type Config struct {
 }
 
 func loadConfig() Config {
-	remotePort, err := strconv.Atoi(getEnv("REMOTE_PORT", "8080"))
+	remotePort, err := strconv.Atoi(getEnv("REMOTE_PORT", "8687"))
 	if err != nil {
 		log.Fatalf("invalid REMOTE_PORT: %v", err)
 	}
@@ -51,7 +51,7 @@ func loadConfig() Config {
 		KnownHostsPath:    getEnv("KNOWN_HOSTS_PATH", "/etc/ssh-known-hosts/known_hosts"),
 		RemotePort:        remotePort,
 		RemoteCommand:     mustEnv("REMOTE_COMMAND"),
-		ListenAddr:        ":" + getEnv("PORT", "8080"),
+		ListenAddr:        ":" + getEnv("PORT", "8687"),
 		InactivityTimeout: inactivity,
 	}
 }
@@ -391,6 +391,10 @@ func buildHandler(tm *TunnelManager) http.Handler {
 			if req.Header.Get("X-Forwarded-Host") == "" {
 				req.Header.Set("X-Forwarded-Host", req.Host)
 			}
+			// Rewrite the Host header to the backend address.
+			// code-server rejects requests where Host doesn't match its listener
+			// (DNS-rebinding protection), so we must send Host: 127.0.0.1:<port>.
+			req.Host = req.URL.Host
 		},
 		Transport: tm.transport,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
