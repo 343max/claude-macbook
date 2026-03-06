@@ -36,9 +36,10 @@ type Config struct {
 }
 
 func loadConfig() Config {
-	remotePort, err := strconv.Atoi(getEnv("REMOTE_PORT", "8687"))
+	port := getEnv("PORT", "8687")
+	portNum, err := strconv.Atoi(port)
 	if err != nil {
-		log.Fatalf("invalid REMOTE_PORT: %v", err)
+		log.Fatalf("invalid PORT: %v", err)
 	}
 	inactivity, err := time.ParseDuration(getEnv("INACTIVITY_TIMEOUT", "30m"))
 	if err != nil {
@@ -49,9 +50,9 @@ func loadConfig() Config {
 		SSHUser:           mustEnv("SSH_USER"),
 		SSHKeyPath:        getEnv("SSH_KEY_PATH", "/etc/ssh-key_id_ed25519"),
 		KnownHostsPath:    getEnv("KNOWN_HOSTS_PATH", "/etc/ssh-known-hosts/known_hosts"),
-		RemotePort:        remotePort,
+		RemotePort:        portNum,
 		RemoteCommand:     mustEnv("REMOTE_COMMAND"),
-		ListenAddr:        ":" + getEnv("PORT", "8687"),
+		ListenAddr:        ":" + port,
 		InactivityTimeout: inactivity,
 	}
 }
