@@ -209,6 +209,8 @@ func (tm *TunnelManager) openLocked() (*ssh.Client, error) {
 		sshClient.Close()
 		return nil, fmt.Errorf("new SSH session: %w", err)
 	}
+	sess.Stdout = os.Stdout
+	sess.Stderr = os.Stderr
 	if err := sess.Start(tm.cfg.RemoteCommand); err != nil {
 		sess.Close()
 		sshClient.Close()
